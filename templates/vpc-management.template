@@ -5,7 +5,7 @@ Metadata:
   Stack:
     Value: 2
   VersionDate:
-    Value: 20160510
+    Value: 20190610
   Identifier:
     Value: template-vpc-management
   Input:
@@ -158,10 +158,7 @@ Parameters:
     Description: Name of existing EC2 key pair for production hosts
     Type: String
     Default: ''
-  pEnvironment:
-    Description: Environment (development, test, or production)
-    Type: String
-    Default: development
+
   pSupportsNatGateway:
     Description: Specifies whether this region supports NAT Gateway (this value is
       determined by the main stack if it is invoked from there)
@@ -271,7 +268,7 @@ Resources:
   rSecurityGroupVpcNat:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow NAT from Management VPC
+      GroupDescription: Allow NAT from Management VPC into ProductionVPC
       VpcId: !Ref rVPCManagement
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -285,8 +282,7 @@ Resources:
       Tags:
       - Key: Name
         Value: sg-web-access-ports-from-production
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rManagementDMZSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -420,7 +416,7 @@ Resources:
   rSecurityGroupSSHFromMgmt:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH access via port 22
+      GroupDescription: Enable SSH access via port 22 from managementVPC to ProductionVPC
       VpcId: !Ref rVPCManagement
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -430,8 +426,23 @@ Resources:
       Tags:
       - Key: Name
         Value: sg-ssh-access-from-management
-      - Key: Environment
-        Value: !Ref pEnvironment
+
+  rSecurityGroupMgmtBastion:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn:
+      - rMgmtBastionInstance
+      - rENIProductionBastion
+    Properties:
+      GroupDescription: Allow Bastion internal IP from managementVPC into ProductionVPC via SSH
+      VpcId: !Ref pProductionVPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: !Join [ '', [ !GetAtt rENIProductionBastion.PrimaryPrivateIpAddress, '/32' ] ]
+      Tags:
+      - Key: Name
+        Value: sg-ssh-access-from-management-vpc
   rManagementNATInstanceInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
@@ -468,7 +479,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Condition: cCreateBastionHost
     Properties:
-      GroupDescription: SG for Bastion Instances
+      GroupDescription: SG to apply to Bastion Instances. SSH access to bastion from anywhere.
       VpcId: !Ref rVPCManagement
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -483,8 +494,7 @@ Resources:
       Tags:
       - Key: Name
         Value: sg-ssh-access-from-bastion
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rPeeringConnectionProduction:
     Type: AWS::EC2::VPCPeeringConnection
     Condition: cCreatePeeringProduction
@@ -494,8 +504,7 @@ Resources:
       Tags:
       - Key: Name
         Value: vpc-peer-production-management
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rRouteMgmtProdPrivate:
     Condition: cCreatePeeringProduction
     Type: AWS::EC2::Route
