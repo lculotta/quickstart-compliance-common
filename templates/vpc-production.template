@@ -6,7 +6,7 @@ Metadata:
   Stack:
     Value: 2
   VersionDate:
-    Value: 20160510
+    Value: 20190610
   Identifier:
     Value: template-vpc-production
   Input:
@@ -121,10 +121,7 @@ Parameters:
     AllowedValues:
     - default
     - dedicated
-  pEnvironment:
-    Description: Environment (development, test, or production)
-    Type: String
-    Default: development
+
   pSupportsNatGateway:
     Description: Specifies whether this region supports NAT Gateway (this value is
       determined by the main stack if it is invoked from there)
@@ -193,12 +190,11 @@ Resources:
       Tags:
       - Key: Name
         Value: !Ref pProductionVPCName
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rSecurityGroupVpcNat:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow NAT from production
+      GroupDescription: Allow NAT from productionVPC to ManagementVPC
       VpcId: !Ref rVPCProduction
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -212,27 +208,11 @@ Resources:
       Tags:
       - Key: Name
         Value: sg-web-access-ports-from-production
-      - Key: Environment
-        Value: !Ref pEnvironment
-  rSecurityGroupMgmtBastion:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow Bastion from Management Network
-      VpcId: !Ref rVPCProduction
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
-        CidrIp: !Ref pBastionSSHCIDR
-      Tags:
-      - Key: Name
-        Value: sg-ssh-access-from-management-vpc
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rSecurityGroupSSHFromProd:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Enable SSH access via port 22
+      GroupDescription: Enable SSH access via port 22 from ProductionVPC to ManagementVPC
       VpcId: !Ref rVPCProduction
       SecurityGroupIngress:
       - IpProtocol: tcp
@@ -242,8 +222,7 @@ Resources:
       Tags:
       - Key: Name
         Value: sg-enable-ssh-access
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rDMZSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -253,8 +232,7 @@ Resources:
       Tags:
       - Key: Name
         Value: Production DMZ Subnet A
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rDMZSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
@@ -264,8 +242,7 @@ Resources:
       Tags:
       - Key: Name
         Value: Production DMZ Subnet B
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rAppPrivateSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -275,8 +252,7 @@ Resources:
       Tags:
       - Key: Name
         Value: Production App Subnet A
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rAppPrivateSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
@@ -286,8 +262,7 @@ Resources:
       Tags:
       - Key: Name
         Value: Production App Subnet B
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rDBPrivateSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -297,8 +272,7 @@ Resources:
       Tags:
       - Key: Name
         Value: Production DB Subnet A
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rDBPrivateSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
@@ -308,16 +282,14 @@ Resources:
       Tags:
       - Key: Name
         Value: Production DB Subnet B
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rIGWProd:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
       - Key: Name
         Value: igw-production
-      - Key: Environment
-        Value: !Ref pEnvironment
+
   rNACLPublic:
     Type: AWS::EC2::NetworkAcl
     Properties:
